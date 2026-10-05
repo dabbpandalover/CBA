@@ -1,0 +1,31 @@
+name: Make white paint render
+on:
+  push:
+    paths:
+      - '.github/workflows/make-white-render.yml'
+permissions:
+  contents: write
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - shell: python
+        run: |
+          from pathlib import Path
+          p=Path("index.html"); s=p.read_text(encoding="utf-8")
+          # Remove the accidentally-added white palette swatch, if present.
+          s=s.replace(",'#ffffff'];","];")
+          # For very light requested colors, use a continuous brightness lift instead of
+          # switching blend modes. This keeps the sliders working and avoids the old snap.
+          a=s.index("function toneFineTune(n){"); b=s.index("function setWheels(",a)
+          new="""function toneFineTune(n){const el=n===1?tone1El:tone2El;const st=document.getElementById('tone'+n+'Strength');const br=document.getElementById('tone'+n+'Bright');const sv=document.getElementById('tone'+n+'StrengthVal');const bv=document.getElementById('tone'+n+'BrightVal');const input=n===1?c1:c2;const strength=Number(st.value);const bright=Number(br.value);const rgb=parseInt(input.value.slice(1),16),r=(rgb>>16)&255,g=(rgb>>8)&255,b=rgb&255,lum=.2126*r+.7152*g+.0722*b;const whiteLift=Math.max(0,Math.min(32,(lum-205)*.64));sv.textContent=strength+'%';bv.textContent=bright+'%';el.style.opacity=String(strength/100);el.style.filter='brightness('+(bright+whiteLift)+'%) contrast('+(108+whiteLift*.25)+'%)';}
+"""
+          s=s[:a]+new+s[b:]
+          p.write_text(s,encoding="utf-8")
+      - run: |
+          git config user.name github-actions
+          git config user.email actions@github.com
+          git add index.html
+          git commit -m "Make white paint render without snap"
+          git push
