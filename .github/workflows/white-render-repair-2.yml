@@ -1,0 +1,31 @@
+name: White rendering repair 2
+on:
+  push:
+    paths:
+      - '.github/workflows/white-render-repair-2.yml'
+permissions:
+  contents: write
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - shell: python
+        run: |
+          from pathlib import Path
+          p=Path("index.html"); s=p.read_text(encoding="utf-8")
+          # Remove accidental white palette entry if the previous workflow added it.
+          s=s.replace(",'#ffffff'];","];")
+          # Patch the currently deployed toneFineTune body by function boundaries.
+          a=s.find("function toneFineTune(n){")
+          b=s.find("function setWheels(",a)
+          if a<0 or b<0: raise SystemExit("tone function boundaries missing")
+          new="function toneFineTune(n){const el=n===1?tone1El:tone2El;const st=document.getElementById('tone'+n+'Strength');const br=document.getElementById('tone'+n+'Bright');const sv=document.getElementById('tone'+n+'StrengthVal');const bv=document.getElementById('tone'+n+'BrightVal');const input=n===1?c1:c2;const strength=Number(st.value),bright=Number(br.value);const rgb=parseInt(input.value.slice(1),16),r=(rgb>>16)&255,g=(rgb>>8)&255,bb=rgb&255,lum=.2126*r+.7152*g+.0722*bb;const lift=Math.max(0,Math.min(35,(lum-200)*.64));sv.textContent=strength+'%';bv.textContent=bright+'%';el.style.opacity=String(strength/100);el.style.filter='brightness('+(bright+lift)+'%) contrast('+(108+lift*.2)+'%)';}\n"
+          s=s[:a]+new+s[b:]
+          p.write_text(s,encoding="utf-8")
+      - run: |
+          git config user.name github-actions
+          git config user.email actions@github.com
+          git add index.html
+          git commit -m "Repair white paint rendering with smooth lift"
+          git push
