@@ -1,0 +1,31 @@
+name: Restore bright white paint
+on:
+  push:
+    paths:
+      - '.github/workflows/restore-bright-white.yml'
+permissions:
+  contents: write
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - shell: python
+        run: |
+          from pathlib import Path
+          p=Path("index.html"); s=p.read_text(encoding="utf-8")
+          a=s.index("function setTone(n,c){"); b=s.index("function toneFineTune(",a)
+          old=s[a:b]
+          new="function setTone(n,c){const el=n===1?tone1El:tone2El; const input=n===1?c1:c2; const label=n===1?tone1Hex:tone2Hex; const safe=renderSafeColor(c,20); el.style.setProperty('--c',safe); const rgb=parseInt(c.slice(1),16), r=(rgb>>16)&255, g=(rgb>>8)&255, b=rgb&255, lum=.2126*r+.7152*g+.0722*b; el.style.mixBlendMode=lum<90?'multiply':lum>225?'screen':'color'; el.style.opacity=lum<35?'0.78':lum<90?'0.88':lum>225?'0.68':'1'; el.style.filter=lum<35?'brightness(145%) contrast(112%)':lum<90?'brightness(120%) contrast(108%)':lum>225?'contrast(122%)':'none'; input.value=c; label.textContent=c.toUpperCase(); toneFineTune(n);}\n"
+          s=s[:a]+new+s[b:]
+          # Fine tune is now purely user-controlled, so bright white baseline can be adjusted manually.
+          a=s.index("function toneFineTune(n){"); b=s.index("function setWheels(",a)
+          new2="function toneFineTune(n){const el=n===1?tone1El:tone2El;const st=document.getElementById('tone'+n+'Strength');const br=document.getElementById('tone'+n+'Bright');const sv=document.getElementById('tone'+n+'StrengthVal');const bv=document.getElementById('tone'+n+'BrightVal');const strength=Number(st.value),bright=Number(br.value);sv.textContent=strength+'%';bv.textContent=bright+'%';el.style.opacity=String(strength/100);el.style.filter='brightness('+bright+'%) contrast(108%)';}\n"
+          s=s[:a]+new2+s[b:]
+          p.write_text(s,encoding="utf-8")
+      - run: |
+          git config user.name github-actions
+          git config user.email actions@github.com
+          git add index.html
+          git commit -m "Restore bright white baseline with Tone sliders"
+          git push
