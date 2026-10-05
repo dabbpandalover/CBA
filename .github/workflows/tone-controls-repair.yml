@@ -1,0 +1,39 @@
+name: Tone controls repair
+on:
+  push:
+    paths:
+      - '.github/workflows/tone-controls-repair.yml'
+permissions:
+  contents: write
+jobs:
+  repair:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - shell: python
+        run: |
+          from pathlib import Path
+          p=Path("index.html")
+          s=p.read_text(encoding="utf-8")
+          # Insert sliders immediately after each tone swatch container if absent.
+          if 'id="tone1Strength"' not in s:
+              s=s.replace('<div id="s1" class="swatches"></div>','<div id="s1" class="swatches"></div><div style="margin-top:10px"><label class="note">Color strength <span id="tone1StrengthVal" style="float:right">100%</span></label><input id="tone1Strength" type="range" min="0" max="100" value="100" style="width:100%"></div><div style="margin-top:8px"><label class="note">Brightness <span id="tone1BrightVal" style="float:right">100%</span></label><input id="tone1Bright" type="range" min="60" max="145" value="100" style="width:100%"></div>',1)
+          if 'id="tone2Strength"' not in s:
+              s=s.replace('<div id="s2" class="swatches"></div>','<div id="s2" class="swatches"></div><div style="margin-top:10px"><label class="note">Color strength <span id="tone2StrengthVal" style="float:right">100%</span></label><input id="tone2Strength" type="range" min="0" max="100" value="100" style="width:100%"></div><div style="margin-top:8px"><label class="note">Brightness <span id="tone2BrightVal" style="float:right">100%</span></label><input id="tone2Bright" type="range" min="60" max="145" value="100" style="width:100%"></div>',1)
+          # Keep existing setTone color logic; layer slider effects on top without white snap thresholds.
+          marker="function setWheels("
+          fx="""function updateToneControls(n){const el=n===1?tone1El:tone2El;const st=document.getElementById('tone'+n+'Strength');const br=document.getElementById('tone'+n+'Bright');if(!st||!br)return;el.style.opacity=String(+st.value/100);el.style.filter='brightness('+br.value+'%) contrast(108%)';document.getElementById('tone'+n+'StrengthVal').textContent=st.value+'%';document.getElementById('tone'+n+'BrightVal').textContent=br.value+'%';}
+"""
+          if 'function updateToneControls(' not in s:
+              i=s.index(marker); s=s[:i]+fx+s[i:]
+          init="setTone(1,c1.value); setTone(2,c2.value);"
+          listeners="""['tone1Strength','tone1Bright'].forEach(id=>document.getElementById(id).addEventListener('input',()=>updateToneControls(1))); ['tone2Strength','tone2Bright'].forEach(id=>document.getElementById(id).addEventListener('input',()=>updateToneControls(2))); updateToneControls(1); updateToneControls(2); """
+          if listeners not in s:
+              s=s.replace(init,init+" "+listeners,1)
+          p.write_text(s,encoding="utf-8")
+      - run: |
+          git config user.name github-actions
+          git config user.email actions@github.com
+          git add index.html
+          git commit -m "Repair Tone strength and brightness controls"
+          git push
