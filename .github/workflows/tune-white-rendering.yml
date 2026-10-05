@@ -1,0 +1,32 @@
+name: Tune white paint rendering
+on:
+  push:
+    paths:
+      - '.github/workflows/tune-white-rendering.yml'
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - shell: python
+        run: |
+          from pathlib import Path
+          p=Path("index.html")
+          s=p.read_text(encoding="utf-8")
+          old="el.style.mixBlendMode=lum<90?'multiply':lum>225?'screen':'color'; el.style.opacity=lum<35?'0.78':lum<90?'0.88':lum>225?'0.94':'1'; el.style.filter=lum<35?'brightness(145%) contrast(112%)':lum<90?'brightness(120%) contrast(108%)':lum>225?'brightness(112%) contrast(104%)':'none';"
+          new="el.style.mixBlendMode=lum<90?'multiply':'color'; el.style.opacity=lum<35?'0.78':lum<90?'0.88':lum>225?'0.92':'1'; el.style.filter=lum<35?'brightness(145%) contrast(112%)':lum<90?'brightness(120%) contrast(108%)':lum>225?'brightness(106%) contrast(110%)':'none';"
+          if old not in s: raise SystemExit("Current white tone patch not found")
+          s=s.replace(old,new,1)
+          oldw="wheelsEl.style.mixBlendMode=lum<90?'multiply':lum>225?'screen':'color'; wheelColor.value=color;"
+          neww="wheelsEl.style.mixBlendMode=lum<90?'multiply':'color'; wheelColor.value=color;"
+          if oldw not in s: raise SystemExit("Current white wheel patch not found")
+          s=s.replace(oldw,neww,1)
+          p.write_text(s,encoding="utf-8")
+      - run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html
+          git commit -m "Reduce white glow while preserving paint detail"
+          git push
