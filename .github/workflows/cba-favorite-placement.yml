@@ -1,0 +1,41 @@
+name: CBA favorite button placement
+on:
+  push:
+    paths: [ '.github/workflows/cba-favorite-placement.yml' ]
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - shell: python
+        run: |
+          from pathlib import Path
+          p=Path("index.html"); s=p.read_text(encoding="utf-8")
+          old="#cbaFavBox{position:fixed;right:18px;bottom:18px;z-index:9999;display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end;max-width:360px}"
+          new="#cbaFavBox{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:10px}"
+          if old not in s: raise SystemExit("favorite CSS target not found")
+          s=s.replace(old,new)
+          oldmsg="#cbaFavMsg{width:100%;text-align:right;color:#fff;font:12px system-ui;min-height:15px}"
+          newmsg="#cbaFavMsg{width:100%;text-align:left;color:#fff;font:12px system-ui;min-height:15px}"
+          s=s.replace(oldmsg,newmsg)
+          anchor='Black Cherry + Dark Plum'
+          i=s.find(anchor)
+          box_start=s.find('<div id="cbaFavBox">')
+          box_end=s.find('</div>',box_start)+6
+          if i<0 or box_start<0: raise SystemExit("placement targets not found")
+          box=s[box_start:box_end]
+          s=s[:box_start]+s[box_end:]
+          i=s.find(anchor)
+          close=s.find('</button>',i)
+          if close<0: raise SystemExit("old favorite button not found")
+          close+=9
+          s=s[:close]+box+s[close:]
+          p.write_text(s,encoding="utf-8")
+      - run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html
+          git commit -m "Move favorite controls beside original favorite preset [cba-favorite-placement]"
+          git push
