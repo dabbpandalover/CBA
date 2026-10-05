@@ -1,0 +1,30 @@
+name: CBA true dark blend fix
+on:
+  push:
+    paths: [ '.github/workflows/cba-true-dark-fix.yml' ]
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - shell: python
+        run: |
+          from pathlib import Path
+          p=Path('index.html'); s=p.read_text(encoding='utf-8')
+          old="el.style.opacity=(c.toLowerCase()==='#000000'?'0.88':'1'); el.style.filter=(c.toLowerCase()==='#000000'?'brightness(118%) contrast(108%)':'none'); input.value=c;"
+          new="const rgb=parseInt(c.slice(1),16), r=(rgb>>16)&255, g=(rgb>>8)&255, b=rgb&255, lum=.2126*r+.7152*g+.0722*b; el.style.mixBlendMode=lum<90?'multiply':'color'; el.style.opacity=lum<35?'0.78':lum<90?'0.88':'1'; el.style.filter=lum<35?'brightness(145%) contrast(112%)':lum<90?'brightness(120%) contrast(108%)':'none'; input.value=c;"
+          if old not in s: raise SystemExit('tone patch target not found')
+          s=s.replace(old,new)
+          old2="wheelsEl.style.setProperty('--c',renderSafeColor(color,28)); wheelColor.value=color;"
+          new2="wheelsEl.style.setProperty('--c',renderSafeColor(color,28)); const rgb=parseInt(color.slice(1),16), r=(rgb>>16)&255, g=(rgb>>8)&255, b=rgb&255, lum=.2126*r+.7152*g+.0722*b; wheelsEl.style.mixBlendMode=lum<90?'multiply':'color'; wheelColor.value=color;"
+          if old2 not in s: raise SystemExit('wheel patch target not found')
+          s=s.replace(old2,new2)
+          p.write_text(s,encoding='utf-8')
+      - run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html
+          git commit -m "Use multiply blend for true dark paint and rims [cba-true-dark]"
+          git push
