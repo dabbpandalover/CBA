@@ -1,2 +1,0 @@
-{'favorites_sections': 1, 'slot1': 1, 'slot2': 1, 'slot3': 1, 'slot4': 1, 'load4': 1, 'legacy_fav_class': 0, 'legacy_favorite_hook': 0, 'save_function': 1, 'load_function': 1}
-PASS=True
