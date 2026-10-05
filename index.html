@@ -14,7 +14,7 @@
 <div style="margin-top:10px"><label class="note">Color strength <span id="wheelStrengthVal" style="float:right">65%</span></label><input id="wheelStrength" type="range" min="0" max="100" value="65" style="width:100%"></div>
 <div style="margin-top:8px"><label class="note">Brightness <span id="wheelBrightVal" style="float:right">100%</span></label><input id="wheelBright" type="range" min="60" max="145" value="100" style="width:100%"></div>
 <div class="row" style="margin-top:8px"><button id="wheelPolished">Polished</button><button id="wheelSatin">Satin</button><button id="wheelDark">Dark</button></div>
-<button id="wheelReset" class="fav" style="color:#ddd;border-color:#454b55;background:#22262d">Reset rims to silver</button></div>
+</div>
 <div class="section"><h2>Layer structure</h2><div class="zonekeys"><span class="key k1">Tone 1</span><span class="key k2">Tone 2</span><span class="key kw">Wheels</span></div><p class="note">Paint is clipped to the exact alpha of your PSD Tone1 and Tone2 layers. The web stack now follows the PSD order exactly: Tone 1 is topmost, then Tone 2, Rims, Accents/Chrome/Dots, and Background at the back.</p></div></div></div></div>
 <script>
 const palette=['#5b101b','#241129','#082d4a','#0c3028','#2b1737','#6b351f','#b0a28d','#6e7379','#12243d','#4a171c','#153b34','#80633f'];
@@ -30,34 +30,37 @@ function setWheels(color=wheelSelect.value,name=null){wheelsEl.dataset.requested
 function updateWheelFx(){const strength=+wheelStrength.value, bright=+wheelBright.value; const requested=(wheelsEl.dataset.requested||wheelColor.value).toLowerCase(); const blackBoost=requested==='#000000'?18:0; wheelsEl.style.opacity=Math.min(.94,Math.max(.25,strength/100)).toFixed(2); wheelsEl.style.filter='brightness('+(bright+blackBoost)+'%) contrast(108%)'; wheelStrengthVal.textContent=strength+'%'; wheelBrightVal.textContent=bright+'%';}
 function customWheel(){setWheels(wheelColor.value,'Custom '+wheelColor.value.toUpperCase());}
 function wheelPreset(strength,bright,label){wheelStrength.value=strength; wheelBright.value=bright; updateWheelFx(); wheelName.textContent=label+' '+wheelColor.value.toUpperCase();}
-function favorite(){setTone(1,'#5b101b');setTone(2,'#241129');}
+
 makeSwatches('s1',1); makeSwatches('s2',2);
 c1.addEventListener('input',e=>setTone(1,e.target.value)); c2.addEventListener('input',e=>setTone(2,e.target.value));
 document.getElementById('apply1').addEventListener('click',()=>setTone(1,c1.value)); document.getElementById('apply2').addEventListener('click',()=>setTone(2,c2.value));
-document.querySelector('.fav').addEventListener('click',favorite); wheelSelect.addEventListener('input',()=>setWheels()); wheelSelect.addEventListener('change',()=>setWheels()); applyWheel.addEventListener('click',customWheel); wheelColor.addEventListener('input',customWheel); wheelStrength.addEventListener('input',updateWheelFx); wheelBright.addEventListener('input',updateWheelFx); document.getElementById('wheelPolished').addEventListener('click',()=>wheelPreset(48,125,'Polished')); document.getElementById('wheelSatin').addEventListener('click',()=>wheelPreset(72,100,'Satin')); document.getElementById('wheelDark').addEventListener('click',()=>wheelPreset(88,78,'Dark')); document.getElementById('wheelReset').addEventListener('click',()=>{wheelSelect.selectedIndex=0; wheelStrength.value=65; wheelBright.value=100; setWheels('#c7c9ce','Silver');});
+ wheelSelect.addEventListener('input',()=>setWheels()); wheelSelect.addEventListener('change',()=>setWheels()); applyWheel.addEventListener('click',customWheel); wheelColor.addEventListener('input',customWheel); wheelStrength.addEventListener('input',updateWheelFx); wheelBright.addEventListener('input',updateWheelFx); document.getElementById('wheelPolished').addEventListener('click',()=>wheelPreset(48,125,'Polished')); document.getElementById('wheelSatin').addEventListener('click',()=>wheelPreset(72,100,'Satin')); document.getElementById('wheelDark').addEventListener('click',()=>wheelPreset(88,78,'Dark')); document.getElementById('wheelReset').addEventListener('click',()=>{wheelSelect.selectedIndex=0; wheelStrength.value=65; wheelBright.value=100; setWheels('#c7c9ce','Silver');});
 setTone(1,c1.value); setTone(2,c2.value); setWheels(); updateWheelFx();
 </script>
 </div>
 <script>
 (()=>{const msg=document.getElementById('cbaFavMsg');const flash=t=>{msg.textContent=t;clearTimeout(window.__cbaFavT);window.__cbaFavT=setTimeout(()=>msg.textContent='',1800)};const state=()=>({tone1:document.getElementById('c1')?.value,tone2:document.getElementById('c2')?.value,wheel:document.getElementById('wheelColor')?.value,strength:document.getElementById('wheelStrength')?.value,brightness:document.getElementById('wheelBright')?.value,finish:document.querySelector('[data-finish].active')?.dataset?.finish||null});const load=n=>{let v;try{v=JSON.parse(localStorage.getItem('cba.favorite.'+n)||'null')}catch(e){}if(!v){flash('Slot '+n+' is empty');return}if(v.tone1&&typeof setTone==='function')setTone(1,v.tone1);if(v.tone2&&typeof setTone==='function')setTone(2,v.tone2);const ws=document.getElementById('wheelStrength'),wb=document.getElementById('wheelBright');if(ws&&v.strength!=null)ws.value=v.strength;if(wb&&v.brightness!=null)wb.value=v.brightness;if(v.wheel&&typeof setWheels==='function')setWheels(v.wheel,'Favorite '+n);if(v.finish){const b=document.querySelector('[data-finish="'+v.finish+'"]');if(b)b.click()}if(typeof updateWheelFx==='function')updateWheelFx();flash('Loaded favorite '+n)};document.querySelectorAll('[data-save]').forEach(b=>b.onclick=()=>{const n=b.dataset.save;localStorage.setItem('cba.favorite.'+n,JSON.stringify(state()));flash('Saved favorite '+n)});document.querySelectorAll('[data-load]').forEach(b=>b.onclick=()=>load(b.dataset.load));})();
-<\/script>
-<style>
-#cbaFavBox{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:10px 0}
-#cbaFavBox button{border:1px solid rgba(255,255,255,.28);background:rgba(18,18,22,.9);color:#fff;padding:8px 12px;border-radius:10px;font:600 13px system-ui;cursor:pointer}
-#cbaFavBox button:hover{background:rgba(42,42,50,.96)}
+
+
+
+
+<style id="cbaFavoritesStyle">
+#cbaFavorites{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:10px 0}
+#cbaFavorites button{border:1px solid rgba(255,255,255,.28);background:rgba(18,18,22,.9);color:#fff;padding:8px 12px;border-radius:10px;font:600 13px system-ui;cursor:pointer}
+#cbaFavorites button:hover{background:rgba(42,42,50,.96)}
 .cbaSlot{display:flex;gap:6px;align-items:center}.cbaSlot span{font:700 12px system-ui;color:#aaa}
 #cbaFavMsg{width:100%;color:#fff;font:12px system-ui;min-height:15px}
 </style>
-<div id="cbaFavBox"><b>Favorites</b><div class="cbaSlot"><span>1</span><button type="button" data-cba-save="1">Save</button><button type="button" data-cba-load="1">Load</button></div><div class="cbaSlot"><span>2</span><button type="button" data-cba-save="2">Save</button><button type="button" data-cba-load="2">Load</button></div><div class="cbaSlot"><span>3</span><button type="button" data-cba-save="3">Save</button><button type="button" data-cba-load="3">Load</button></div><div class="cbaSlot"><span>4</span><button type="button" data-cba-save="4">Save</button><button type="button" data-cba-load="4">Load</button></div><div id="cbaFavMsg"></div></div>
+<div id="cbaFavorites"><b>Favorites</b>
+<div class="cbaSlot"><span>1</span><button type="button" onclick="cbaSave(1)">Save</button><button type="button" onclick="cbaLoad(1)">Load</button></div>
+<div class="cbaSlot"><span>2</span><button type="button" onclick="cbaSave(2)">Save</button><button type="button" onclick="cbaLoad(2)">Load</button></div>
+<div class="cbaSlot"><span>3</span><button type="button" onclick="cbaSave(3)">Save</button><button type="button" onclick="cbaLoad(3)">Load</button></div>
+<div class="cbaSlot"><span>4</span><button type="button" onclick="cbaSave(4)">Save</button><button type="button" onclick="cbaLoad(4)">Load</button></div>
+<div id="cbaFavMsg"></div></div>
 <script>
-window.addEventListener('DOMContentLoaded',function(){
-  const msg=document.getElementById('cbaFavMsg');
-  function flash(t){msg.textContent=t;clearTimeout(window.__cbaFavT);window.__cbaFavT=setTimeout(()=>msg.textContent='',1800)}
-  function val(id){const e=document.getElementById(id);return e?e.value:null}
-  function current(){return {tone1:val('c1'),tone2:val('c2'),wheel:val('wheelColor'),strength:val('wheelStrength'),brightness:val('wheelBright'),finish:(document.querySelector('[data-finish].active')||{}).dataset?.finish||null}}
-  function load(n){let v;try{v=JSON.parse(localStorage.getItem('cba.favorite.slot.'+n)||'null')}catch(e){}if(!v){flash('Slot '+n+' is empty');return}if(v.tone1&&typeof window.setTone==='function')window.setTone(1,v.tone1);if(v.tone2&&typeof window.setTone==='function')window.setTone(2,v.tone2);const a=document.getElementById('wheelStrength'),b=document.getElementById('wheelBright');if(a&&v.strength!=null)a.value=v.strength;if(b&&v.brightness!=null)b.value=v.brightness;if(v.wheel&&typeof window.setWheels==='function')window.setWheels(v.wheel,'Favorite '+n);if(v.finish){const f=document.querySelector('[data-finish="'+v.finish+'"]');if(f)f.click()}if(typeof window.updateWheelFx==='function')window.updateWheelFx();flash('Loaded favorite '+n)}
-  document.querySelectorAll('[data-cba-save]').forEach(btn=>btn.addEventListener('click',function(){const n=this.dataset.cbaSave;try{localStorage.setItem('cba.favorite.slot.'+n,JSON.stringify(current()));flash('Saved favorite '+n)}catch(e){flash('Could not save')}}));
-  document.querySelectorAll('[data-cba-load]').forEach(btn=>btn.addEventListener('click',function(){load(this.dataset.cbaLoad)}));
-});
+function cbaFlash(t){var m=document.getElementById('cbaFavMsg');if(m){m.textContent=t;clearTimeout(window.__cbaT);window.__cbaT=setTimeout(function(){m.textContent=''},1800)}}
+function cbaState(){return {tone1:c1.value,tone2:c2.value,wheel:wheelColor.value,strength:wheelStrength.value,brightness:wheelBright.value}}
+function cbaSave(n){try{localStorage.setItem('cba.slot.'+n,JSON.stringify(cbaState()));cbaFlash('Saved favorite '+n)}catch(e){cbaFlash('Save failed')}}
+function cbaLoad(n){var v;try{v=JSON.parse(localStorage.getItem('cba.slot.'+n)||'null')}catch(e){}if(!v){cbaFlash('Slot '+n+' is empty');return}if(v.tone1)setTone(1,v.tone1);if(v.tone2)setTone(2,v.tone2);if(v.strength!=null)wheelStrength.value=v.strength;if(v.brightness!=null)wheelBright.value=v.brightness;if(v.wheel)setWheels(v.wheel,'Favorite '+n);updateWheelFx();cbaFlash('Loaded favorite '+n)}
 </script>
 </body></html>
