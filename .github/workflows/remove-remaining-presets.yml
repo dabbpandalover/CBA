@@ -1,0 +1,39 @@
+name: Remove remaining presets
+on:
+  push:
+    paths:
+      - '.github/workflows/remove-remaining-presets.yml'
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - shell: python
+        run: |
+          from pathlib import Path
+          import re
+          p=Path("index.html")
+          s=p.read_text(encoding="utf-8")
+          # Remove the three rim preset buttons: Polished, Satin, Dark.
+          s=re.sub(r'<div class="row" style="margin-top:8px">\s*<button id="wheelPolished">Polished</button>\s*<button id="wheelSatin">Satin</button>\s*<button id="wheelDark">Dark</button>\s*</div>','',s)
+          # Remove their preset helper and event handlers, preserving custom rim controls and reset-to-silver.
+          s=re.sub(r'function wheelPreset\(strength,bright,label\)\{.*?\}\s*','',s,flags=re.S)
+          s=re.sub(r"document\.getElementById\('wheelPolished'\)\.addEventListener\('click',\(\)=>wheelPreset\(48,125,'Polished'\)\);\s*",'',s)
+          s=re.sub(r"document\.getElementById\('wheelSatin'\)\.addEventListener\('click',\(\)=>wheelPreset\(72,100,'Satin'\)\);\s*",'',s)
+          s=re.sub(r"document\.getElementById\('wheelDark'\)\.addEventListener\('click',\(\)=>wheelPreset\(88,78,'Dark'\)\);\s*",'',s)
+          # Also remove any lingering Black Cherry + Dark Plum favorite control/hook.
+          s=re.sub(r'<button[^>]*>\s*★?\s*Black Cherry \+ Dark Plum\s*</button>','',s,flags=re.I)
+          s=re.sub(r'function favorite\(\)\{.*?\}\s*','',s,flags=re.S)
+          s=s.replace("document.querySelector('.fav').addEventListener('click',favorite); ","")
+          forbidden=['id="wheelPolished"','id="wheelSatin"','id="wheelDark"','Black Cherry + Dark Plum','function wheelPreset(','function favorite()']
+          left=[x for x in forbidden if x in s]
+          if left: raise SystemExit("Still present: "+str(left))
+          p.write_text(s,encoding="utf-8")
+      - run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html
+          git commit -m "Remove remaining rim presets and legacy favorite"
+          git push
