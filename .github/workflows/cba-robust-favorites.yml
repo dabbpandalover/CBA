@@ -1,0 +1,53 @@
+name: CBA robust favorites
+on:
+  push:
+    paths: [ '.github/workflows/cba-robust-favorites.yml' ]
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - shell: python
+        run: |
+          from pathlib import Path
+          import re
+          p=Path("index.html"); s=p.read_text(encoding="utf-8")
+          # Replace the current favorites script with dependency-free DOM/event logic.
+          pattern=r'<script>\s*function cbaFlash\(t\).*?</script>'
+          script=r"""<script>
+          (function(){
+            function el(id){return document.getElementById(id)}
+            function flash(t){var m=el('cbaFavMsg');if(!m)return;m.textContent=t;clearTimeout(window.__cbaT);window.__cbaT=setTimeout(function(){m.textContent=''},2200)}
+            function value(id){var x=el(id);return x?x.value:null}
+            function fire(x){if(!x)return;x.dispatchEvent(new Event('input',{bubbles:true}));x.dispatchEvent(new Event('change',{bubbles:true}))}
+            function state(){return {tone1:value('c1'),tone2:value('c2'),wheel:value('wheelColor'),strength:value('wheelStrength'),brightness:value('wheelBright')}}
+            window.cbaSave=function(n){try{var v=state();localStorage.setItem('cba.favorite.slot.'+n,JSON.stringify(v));var test=localStorage.getItem('cba.favorite.slot.'+n);if(!test)throw new Error('storage');flash('Saved favorite '+n+' ✓')}catch(e){flash('Save failed: browser storage unavailable')}}
+            window.cbaLoad=function(n){var raw,v;try{raw=localStorage.getItem('cba.favorite.slot.'+n);v=raw?JSON.parse(raw):null}catch(e){}if(!v){flash('Slot '+n+' is empty');return}
+              var x=el('c1');if(x&&v.tone1){x.value=v.tone1;fire(x)}
+              x=el('c2');if(x&&v.tone2){x.value=v.tone2;fire(x)}
+              x=el('wheelColor');if(x&&v.wheel){x.value=v.wheel;fire(x)}
+              x=el('wheelStrength');if(x&&v.strength!=null){x.value=v.strength;fire(x)}
+              x=el('wheelBright');if(x&&v.brightness!=null){x.value=v.brightness;fire(x)}
+              flash('Loaded favorite '+n+' ✓')
+            }
+            function bind(){
+              document.querySelectorAll('#cbaFavorites button').forEach(function(b){
+                var m=(b.getAttribute('onclick')||'').match(/cba(Save|Load)\((\d+)\)/);
+                if(!m)return;b.removeAttribute('onclick');
+                b.addEventListener('click',function(){window['cba'+m[1]](+m[2])});
+              });
+            }
+            if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',bind);else bind();
+          })();
+          </script>"""
+          s,n=re.subn(pattern,script,s,flags=re.S)
+          if n!=1: raise SystemExit("favorites script target count="+str(n))
+          p.write_text(s,encoding="utf-8")
+      - run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html
+          git commit -m "Make favorite save load independent and event-driven"
+          git push
