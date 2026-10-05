@@ -1,0 +1,39 @@
+name: Fix Tone sliders interaction
+on:
+  push:
+    paths:
+      - '.github/workflows/fix-tone-slider-interaction.yml'
+permissions:
+  contents: write
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - shell: python
+        run: |
+          from pathlib import Path
+          p=Path("index.html"); s=p.read_text(encoding="utf-8")
+          # Make controls explicitly interactive and avoid browser/global-id quirks.
+          s=s.replace('id="tone1Strength" type="range"','id="tone1Strength" class="toneSlider" type="range"')
+          s=s.replace('id="tone1Bright" type="range"','id="tone1Bright" class="toneSlider" type="range"')
+          s=s.replace('id="tone2Strength" type="range"','id="tone2Strength" class="toneSlider" type="range"')
+          s=s.replace('id="tone2Bright" type="range"','id="tone2Bright" class="toneSlider" type="range"')
+          # Add high-specificity interaction CSS before closing head.
+          css='<style id="toneSliderInteraction">.toneSlider{display:block!important;position:relative!important;z-index:50!important;pointer-events:auto!important;touch-action:pan-x!important;cursor:pointer!important;width:100%!important;opacity:1!important}</style>'
+          if 'id="toneSliderInteraction"' not in s:
+              s=s.replace('</head>',css+'</head>',1)
+          # Replace listeners with delegated input/change handling, robust even if controls are rebuilt.
+          old="document.getElementById('tone1Strength').addEventListener('input',()=>toneFineTune(1)); document.getElementById('tone1Bright').addEventListener('input',()=>toneFineTune(1)); document.getElementById('tone2Strength').addEventListener('input',()=>toneFineTune(2)); document.getElementById('tone2Bright').addEventListener('input',()=>toneFineTune(2)); setTone(1,c1.value); setTone(2,c2.value); toneFineTune(1); toneFineTune(2); setWheels(); updateWheelFx();"
+          new="document.addEventListener('input',e=>{if(e.target&&e.target.classList.contains('toneSlider'))toneFineTune(e.target.id.indexOf('tone1')===0?1:2);}); document.addEventListener('change',e=>{if(e.target&&e.target.classList.contains('toneSlider'))toneFineTune(e.target.id.indexOf('tone1')===0?1:2);}); setTone(1,c1.value); setTone(2,c2.value); toneFineTune(1); toneFineTune(2); setWheels(); updateWheelFx();"
+          if old not in s: raise SystemExit("current listener block missing")
+          s=s.replace(old,new,1)
+          for x in ['tone1Strength','tone1Bright','tone2Strength','tone2Bright']:
+              if s.count('id="'+x+'"') != 1: raise SystemExit(x+" count wrong")
+          p.write_text(s,encoding="utf-8")
+      - run: |
+          git config user.name github-actions
+          git config user.email actions@github.com
+          git add index.html
+          git commit -m "Make Tone sliders interactive"
+          git push
