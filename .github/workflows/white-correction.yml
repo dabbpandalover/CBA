@@ -1,0 +1,30 @@
+name: White render correction
+on:
+  push:
+    paths:
+      - '.github/workflows/white-correction.yml'
+permissions:
+  contents: write
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Patch renderer
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p=Path("index.html")
+          s=p.read_text()
+          a="el.style.mixBlendMode=lum<90?'multiply':'color'; el.style.opacity=lum<35?'0.78':lum<90?'0.88':lum>225?'0.92':'1'; el.style.filter=lum<35?'brightness(145%) contrast(112%)':lum<90?'brightness(120%) contrast(108%)':lum>225?'brightness(106%) contrast(110%)':'none';"
+          b="el.style.mixBlendMode=lum<90?'multiply':lum>225?'screen':'color'; el.style.opacity=lum<35?'0.78':lum<90?'0.88':lum>225?'0.68':'1'; el.style.filter=lum<35?'brightness(145%) contrast(112%)':lum<90?'brightness(120%) contrast(108%)':lum>225?'contrast(122%)':'none';"
+          if a not in s: raise SystemExit("renderer signature missing")
+          p.write_text(s.replace(a,b,1))
+          PY
+      - name: Commit
+        run: |
+          git config user.name github-actions
+          git config user.email actions@github.com
+          git add index.html
+          git commit -m "Correct white paint rendering"
+          git push
