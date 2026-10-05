@@ -44,23 +44,38 @@ setTone(1,c1.value); setTone(2,c2.value); setWheels(); updateWheelFx();
 
 
 
+
+
+
 <style id="cbaFavoritesStyle">
-#cbaFavorites{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:10px 0}
+#cbaFavorites{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin:12px 0}
+#cbaFavorites .slot{display:flex;gap:6px;align-items:center}
 #cbaFavorites button{border:1px solid rgba(255,255,255,.28);background:rgba(18,18,22,.9);color:#fff;padding:8px 12px;border-radius:10px;font:600 13px system-ui;cursor:pointer}
-#cbaFavorites button:hover{background:rgba(42,42,50,.96)}
-.cbaSlot{display:flex;gap:6px;align-items:center}.cbaSlot span{font:700 12px system-ui;color:#aaa}
-#cbaFavMsg{width:100%;color:#fff;font:12px system-ui;min-height:15px}
+#cbaFavMsg{flex-basis:100%;min-height:16px;font:12px system-ui;color:#fff}
 </style>
 <div id="cbaFavorites"><b>Favorites</b>
-<div class="cbaSlot"><span>1</span><button type="button" onclick="cbaSave(1)">Save</button><button type="button" onclick="cbaLoad(1)">Load</button></div>
-<div class="cbaSlot"><span>2</span><button type="button" onclick="cbaSave(2)">Save</button><button type="button" onclick="cbaLoad(2)">Load</button></div>
-<div class="cbaSlot"><span>3</span><button type="button" onclick="cbaSave(3)">Save</button><button type="button" onclick="cbaLoad(3)">Load</button></div>
-<div class="cbaSlot"><span>4</span><button type="button" onclick="cbaSave(4)">Save</button><button type="button" onclick="cbaLoad(4)">Load</button></div>
-<div id="cbaFavMsg"></div></div>
-<script>
-function cbaFlash(t){var m=document.getElementById('cbaFavMsg');if(m){m.textContent=t;clearTimeout(window.__cbaT);window.__cbaT=setTimeout(function(){m.textContent=''},1800)}}
-function cbaState(){return {tone1:c1.value,tone2:c2.value,wheel:wheelColor.value,strength:wheelStrength.value,brightness:wheelBright.value}}
-function cbaSave(n){try{localStorage.setItem('cba.slot.'+n,JSON.stringify(cbaState()));cbaFlash('Saved favorite '+n)}catch(e){cbaFlash('Save failed')}}
-function cbaLoad(n){var v;try{v=JSON.parse(localStorage.getItem('cba.slot.'+n)||'null')}catch(e){}if(!v){cbaFlash('Slot '+n+' is empty');return}if(v.tone1)setTone(1,v.tone1);if(v.tone2)setTone(2,v.tone2);if(v.strength!=null)wheelStrength.value=v.strength;if(v.brightness!=null)wheelBright.value=v.brightness;if(v.wheel)setWheels(v.wheel,'Favorite '+n);updateWheelFx();cbaFlash('Loaded favorite '+n)}
+  <div class="slot"><span>1</span><button type="button" data-save-slot="1">Save</button><button type="button" data-load-slot="1">Load</button></div>
+  <div class="slot"><span>2</span><button type="button" data-save-slot="2">Save</button><button type="button" data-load-slot="2">Load</button></div>
+  <div class="slot"><span>3</span><button type="button" data-save-slot="3">Save</button><button type="button" data-load-slot="3">Load</button></div>
+  <div class="slot"><span>4</span><button type="button" data-save-slot="4">Save</button><button type="button" data-load-slot="4">Load</button></div>
+  <div id="cbaFavMsg"></div>
+</div>
+<script id="cbaFavoritesScript">
+(function(){
+  var KEY='cba-favorite-v3-';
+  function q(id){return document.getElementById(id)}
+  function msg(t){var m=q('cbaFavMsg');if(m){m.textContent=t;setTimeout(function(){if(m.textContent===t)m.textContent=''},1800)}}
+  function get(id){var e=q(id);return e?e.value:''}
+  function emit(e){if(!e)return;e.dispatchEvent(new Event('input',{bubbles:true}));e.dispatchEvent(new Event('change',{bubbles:true}))}
+  function capture(){return {c1:get('c1'),c2:get('c2'),wheelColor:get('wheelColor'),wheelStrength:get('wheelStrength'),wheelBright:get('wheelBright')}}
+  function restore(v){[['c1','c1'],['c2','c2'],['wheelColor','wheelColor'],['wheelStrength','wheelStrength'],['wheelBright','wheelBright']].forEach(function(a){var e=q(a[0]);if(e&&v[a[1]]!==undefined){e.value=v[a[1]];emit(e)}})}
+  function save(n){try{var data=JSON.stringify(capture());localStorage.setItem(KEY+n,data);if(localStorage.getItem(KEY+n)!==data)throw 0;msg('Slot '+n+' saved ✓')}catch(e){msg('Slot '+n+' could not save')}}
+  function load(n){try{var raw=localStorage.getItem(KEY+n);if(!raw){msg('Slot '+n+' is empty');return}restore(JSON.parse(raw));msg('Slot '+n+' loaded ✓')}catch(e){msg('Slot '+n+' could not load')}}
+  function init(){
+    document.querySelectorAll('[data-save-slot]').forEach(function(b){b.addEventListener('click',function(){save(this.getAttribute('data-save-slot'))})});
+    document.querySelectorAll('[data-load-slot]').forEach(function(b){b.addEventListener('click',function(){load(this.getAttribute('data-load-slot'))})});
+  }
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init);else init();
+})();
 </script>
 </body></html>
