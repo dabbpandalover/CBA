@@ -1,0 +1,38 @@
+name: CBA dark color renderer fix
+on:
+  push:
+    branches: [ main ]
+permissions:
+  contents: write
+jobs:
+  patch:
+    if: "!contains(github.event.head_commit.message, '[cba-render-fix]')"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Patch CBA renderer
+        shell: python
+        run: |
+          from pathlib import Path
+          p=Path('index.html')
+          s=p.read_text(encoding='utf-8')
+          old="function setTone(n,c){const el=n===1?tone1El:tone2El; const input=n===1?c1:c2; const label=n===1?tone1Hex:tone2Hex; el.style.setProperty('--c',c); input.value=c; label.textContent=c.toUpperCase();}"
+          new="""function renderSafeColor(c,min=18){const h=c.replace('#','');let r=parseInt(h.slice(0,2),16),g=parseInt(h.slice(2,4),16),b=parseInt(h.slice(4,6),16);const mx=Math.max(r,g,b);if(mx<min){const k=min/(mx||1);r=Math.min(255,Math.round((r||1)*k));g=Math.min(255,Math.round((g||1)*k));b=Math.min(255,Math.round((b||1)*k));if(c.toLowerCase()==='#000000')r=g=b=24;}return '#'+[r,g,b].map(v=>v.toString(16).padStart(2,'0')).join('');}\nfunction setTone(n,c){const el=n===1?tone1El:tone2El; const input=n===1?c1:c2; const label=n===1?tone1Hex:tone2Hex; const safe=renderSafeColor(c,20); el.style.setProperty('--c',safe); el.style.opacity=(c.toLowerCase()==='#000000'?'0.88':'1'); el.style.filter=(c.toLowerCase()==='#000000'?'brightness(118%) contrast(108%)':'none'); input.value=c; label.textContent=c.toUpperCase();}"""
+          if old not in s: raise SystemExit('setTone target not found')
+          s=s.replace(old,new)
+          old2="function setWheels(color=wheelSelect.value,name=null){wheelsEl.style.setProperty('--c',color); wheelColor.value=color; wheelName.textContent=name||wheelSelect.options[wheelSelect.selectedIndex].text; updateWheelFx();}"
+          new2="""function setWheels(color=wheelSelect.value,name=null){wheelsEl.dataset.requested=color; wheelsEl.style.setProperty('--c',renderSafeColor(color,28)); wheelColor.value=color; wheelName.textContent=name||wheelSelect.options[wheelSelect.selectedIndex].text; updateWheelFx();}"""
+          if old2 not in s: raise SystemExit('setWheels target not found')
+          s=s.replace(old2,new2)
+          old3="function updateWheelFx(){const strength=+wheelStrength.value, bright=+wheelBright.value; wheelsEl.style.opacity=(strength/100).toFixed(2); wheelsEl.style.filter=`brightness(${bright}%)`; wheelStrengthVal.textContent=strength+'%'; wheelBrightVal.textContent=bright+'%';}"
+          new3="""function updateWheelFx(){const strength=+wheelStrength.value, bright=+wheelBright.value; const requested=(wheelsEl.dataset.requested||wheelColor.value).toLowerCase(); const blackBoost=requested==='#000000'?18:0; wheelsEl.style.opacity=Math.min(.94,Math.max(.25,strength/100)).toFixed(2); wheelsEl.style.filter='brightness('+(bright+blackBoost)+'%) contrast(108%)'; wheelStrengthVal.textContent=strength+'%'; wheelBrightVal.textContent=bright+'%';}"""
+          if old3 not in s: raise SystemExit('wheel FX target not found')
+          s=s.replace(old3,new3)
+          p.write_text(s,encoding='utf-8')
+      - name: Commit renderer fix
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html
+          git commit -m "Fix dark paint and rim rendering [cba-render-fix]"
+          git push
