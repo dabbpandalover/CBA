@@ -1,6 +1,8 @@
 name: Tone controls direct repair
 on:
-  workflow_dispatch:
+  push:
+    paths:
+      - '.github/workflows/tone-controls-direct.yml'
 permissions:
   contents: write
 jobs:
@@ -19,8 +21,7 @@ jobs:
               panel='<div class="section"><h2>Tone fine tuning</h2><div class="note">Tone 1 strength <span id="tone1StrengthVal" style="float:right">100%</span></div><input id="tone1Strength" type="range" min="0" max="100" value="100" style="width:100%"><div class="note">Tone 1 brightness <span id="tone1BrightVal" style="float:right">100%</span></div><input id="tone1Bright" type="range" min="60" max="145" value="100" style="width:100%"><div class="note">Tone 2 strength <span id="tone2StrengthVal" style="float:right">100%</span></div><input id="tone2Strength" type="range" min="0" max="100" value="100" style="width:100%"><div class="note">Tone 2 brightness <span id="tone2BrightVal" style="float:right">100%</span></div><input id="tone2Bright" type="range" min="60" max="145" value="100" style="width:100%"></div>'
               s=s[:pos]+panel+s[pos:]
           if 'function toneFineTune(' not in s:
-              marker='function setWheels('
-              pos=s.find(marker)
+              pos=s.find('function setWheels(')
               if pos<0: raise SystemExit("wheel function missing")
               js="function toneFineTune(n){const el=n===1?tone1El:tone2El;const st=document.getElementById('tone'+n+'Strength');const br=document.getElementById('tone'+n+'Bright');el.style.opacity=String(Number(st.value)/100);el.style.filter='brightness('+br.value+'%) contrast(108%)';document.getElementById('tone'+n+'StrengthVal').textContent=st.value+'%';document.getElementById('tone'+n+'BrightVal').textContent=br.value+'%';}\n"
               s=s[:pos]+js+s[pos:]
