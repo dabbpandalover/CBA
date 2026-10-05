@@ -1,0 +1,33 @@
+name: Add white paint option
+on:
+  push:
+    paths:
+      - '.github/workflows/add-white-paint.yml'
+permissions:
+  contents: write
+jobs:
+  add:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - shell: python
+        run: |
+          from pathlib import Path
+          p=Path("index.html"); s=p.read_text(encoding="utf-8")
+          # Add white to the shared Tone palette so both Tone1 and Tone2 get a white swatch.
+          old="const palette=["
+          i=s.find(old)
+          if i<0: raise SystemExit("palette missing")
+          j=s.find("];",i)
+          block=s[i:j+2]
+          if "'#ffffff'" not in block.lower() and '"#ffffff"' not in block.lower():
+              block=block[:-2]+",'#ffffff'];"
+              s=s[:i]+block+s[j+2:]
+          # White uses the existing no-snap light-color path and the new brightness/strength sliders.
+          p.write_text(s,encoding="utf-8")
+      - run: |
+          git config user.name github-actions
+          git config user.email actions@github.com
+          git add index.html
+          git commit -m "Add white paint option to Tone palette"
+          git push
