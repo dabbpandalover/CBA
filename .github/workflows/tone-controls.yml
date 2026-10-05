@@ -1,0 +1,38 @@
+name: Add tone strength brightness controls
+on:
+  push:
+    paths:
+      - '.github/workflows/tone-controls.yml'
+permissions:
+  contents: write
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - shell: python
+        run: |
+          from pathlib import Path
+          p=Path("index.html")
+          s=p.read_text(encoding="utf-8")
+          # Add independent sliders below each tone's swatches.
+          s=s.replace('<div id="s1" class="swatches"></div>','<div id="s1" class="swatches"></div><div style="margin-top:10px"><label class="note">Color strength <span id="tone1StrengthVal" style="float:right">100%</span></label><input id="tone1Strength" type="range" min="0" max="100" value="100" style="width:100%"></div><div style="margin-top:8px"><label class="note">Brightness <span id="tone1BrightVal" style="float:right">100%</span></label><input id="tone1Bright" type="range" min="60" max="145" value="100" style="width:100%"></div>',1)
+          s=s.replace('<div id="s2" class="swatches"></div>','<div id="s2" class="swatches"></div><div style="margin-top:10px"><label class="note">Color strength <span id="tone2StrengthVal" style="float:right">100%</span></label><input id="tone2Strength" type="range" min="0" max="100" value="100" style="width:100%"></div><div style="margin-top:8px"><label class="note">Brightness <span id="tone2BrightVal" style="float:right">100%</span></label><input id="tone2Bright" type="range" min="60" max="145" value="100" style="width:100%"></div>',1)
+          # Replace white-threshold/snap renderer with continuous tone controls.
+          start=s.index('function setTone(n,c){')
+          end=s.index('function setWheels(',start)
+          tone="""function updateToneFx(n){const el=n===1?tone1El:tone2El; const strength=+(n===1?tone1Strength:tone2Strength).value; const bright=+(n===1?tone1Bright:tone2Bright).value; const sv=n===1?tone1StrengthVal:tone2StrengthVal; const bv=n===1?tone1BrightVal:tone2BrightVal; el.style.opacity=Math.max(0,Math.min(1,strength/100)); el.style.filter='brightness('+bright+'%) contrast(108%)'; sv.textContent=strength+'%'; bv.textContent=bright+'%';}
+function setTone(n,c){const el=n===1?tone1El:tone2El; const input=n===1?c1:c2; const label=n===1?tone1Hex:tone2Hex; const safe=renderSafeColor(c,20); el.style.setProperty('--c',safe); const rgb=parseInt(c.slice(1),16), r=(rgb>>16)&255, g=(rgb>>8)&255, b=rgb&255, lum=.2126*r+.7152*g+.0722*b; el.style.mixBlendMode=lum<90?'multiply':'color'; input.value=c; label.textContent=c.toUpperCase(); updateToneFx(n);}
+"""
+          s=s[:start]+tone+s[end:]
+          anchor="c1.addEventListener('input',e=>setTone(1,e.target.value)); c2.addEventListener('input',e=>setTone(2,e.target.value));"
+          listeners=anchor+" tone1Strength.addEventListener('input',()=>updateToneFx(1)); tone1Bright.addEventListener('input',()=>updateToneFx(1)); tone2Strength.addEventListener('input',()=>updateToneFx(2)); tone2Bright.addEventListener('input',()=>updateToneFx(2));"
+          if anchor not in s: raise SystemExit("tone listener anchor missing")
+          s=s.replace(anchor,listeners,1)
+          p.write_text(s,encoding="utf-8")
+      - run: |
+          git config user.name github-actions
+          git config user.email actions@github.com
+          git add index.html
+          git commit -m "Add Tone 1 and Tone 2 strength brightness controls"
+          git push
