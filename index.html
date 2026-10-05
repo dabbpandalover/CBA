@@ -13,7 +13,7 @@
 <div class="row" style="margin-top:8px"><input id="wheelColor" type="color" value="#c7c9ce"><button id="applyWheel">Apply custom rim color</button></div>
 <div style="margin-top:10px"><label class="note">Color strength <span id="wheelStrengthVal" style="float:right">65%</span></label><input id="wheelStrength" type="range" min="0" max="100" value="65" style="width:100%"></div>
 <div style="margin-top:8px"><label class="note">Brightness <span id="wheelBrightVal" style="float:right">100%</span></label><input id="wheelBright" type="range" min="60" max="145" value="100" style="width:100%"></div>
-<div class="row" style="margin-top:8px"><button id="wheelPolished">Polished</button><button id="wheelSatin">Satin</button><button id="wheelDark">Dark</button></div>
+
 </div>
 <div class="section"><h2>Layer structure</h2><div class="zonekeys"><span class="key k1">Tone 1</span><span class="key k2">Tone 2</span><span class="key kw">Wheels</span></div><p class="note">Paint is clipped to the exact alpha of your PSD Tone1 and Tone2 layers. The web stack now follows the PSD order exactly: Tone 1 is topmost, then Tone 2, Rims, Accents/Chrome/Dots, and Background at the back.</p></div></div></div></div>
 <script>
@@ -29,12 +29,10 @@ function setTone(n,c){const el=n===1?tone1El:tone2El; const input=n===1?c1:c2; c
 function setWheels(color=wheelSelect.value,name=null){wheelsEl.dataset.requested=color; wheelsEl.style.setProperty('--c',renderSafeColor(color,28)); const rgb=parseInt(color.slice(1),16), r=(rgb>>16)&255, g=(rgb>>8)&255, b=rgb&255, lum=.2126*r+.7152*g+.0722*b; wheelsEl.style.mixBlendMode=lum<90?'multiply':'color'; wheelColor.value=color; wheelName.textContent=name||wheelSelect.options[wheelSelect.selectedIndex].text; updateWheelFx();}
 function updateWheelFx(){const strength=+wheelStrength.value, bright=+wheelBright.value; const requested=(wheelsEl.dataset.requested||wheelColor.value).toLowerCase(); const blackBoost=requested==='#000000'?18:0; wheelsEl.style.opacity=Math.min(.94,Math.max(.25,strength/100)).toFixed(2); wheelsEl.style.filter='brightness('+(bright+blackBoost)+'%) contrast(108%)'; wheelStrengthVal.textContent=strength+'%'; wheelBrightVal.textContent=bright+'%';}
 function customWheel(){setWheels(wheelColor.value,'Custom '+wheelColor.value.toUpperCase());}
-function wheelPreset(strength,bright,label){wheelStrength.value=strength; wheelBright.value=bright; updateWheelFx(); wheelName.textContent=label+' '+wheelColor.value.toUpperCase();}
-
 makeSwatches('s1',1); makeSwatches('s2',2);
 c1.addEventListener('input',e=>setTone(1,e.target.value)); c2.addEventListener('input',e=>setTone(2,e.target.value));
 document.getElementById('apply1').addEventListener('click',()=>setTone(1,c1.value)); document.getElementById('apply2').addEventListener('click',()=>setTone(2,c2.value));
- wheelSelect.addEventListener('input',()=>setWheels()); wheelSelect.addEventListener('change',()=>setWheels()); applyWheel.addEventListener('click',customWheel); wheelColor.addEventListener('input',customWheel); wheelStrength.addEventListener('input',updateWheelFx); wheelBright.addEventListener('input',updateWheelFx); document.getElementById('wheelPolished').addEventListener('click',()=>wheelPreset(48,125,'Polished')); document.getElementById('wheelSatin').addEventListener('click',()=>wheelPreset(72,100,'Satin')); document.getElementById('wheelDark').addEventListener('click',()=>wheelPreset(88,78,'Dark')); document.getElementById('wheelReset').addEventListener('click',()=>{wheelSelect.selectedIndex=0; wheelStrength.value=65; wheelBright.value=100; setWheels('#c7c9ce','Silver');});
+ wheelSelect.addEventListener('input',()=>setWheels()); wheelSelect.addEventListener('change',()=>setWheels()); applyWheel.addEventListener('click',customWheel); wheelColor.addEventListener('input',customWheel); wheelStrength.addEventListener('input',updateWheelFx); wheelBright.addEventListener('input',updateWheelFx); document.getElementById('wheelReset').addEventListener('click',()=>{wheelSelect.selectedIndex=0; wheelStrength.value=65; wheelBright.value=100; setWheels('#c7c9ce','Silver');});
 setTone(1,c1.value); setTone(2,c2.value); setWheels(); updateWheelFx();
 </script>
 </div>
