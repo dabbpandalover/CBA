@@ -1,0 +1,34 @@
+name: Fix Tone slider wiring
+on:
+  push:
+    paths:
+      - '.github/workflows/fix-tone-slider-wiring.yml'
+permissions:
+  contents: write
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - shell: python
+        run: |
+          from pathlib import Path
+          p=Path("index.html"); s=p.read_text(encoding="utf-8")
+          old="tone1Strength.addEventListener('input',()=>toneFineTune(1)); tone1Bright.addEventListener('input',()=>toneFineTune(1)); tone2Strength.addEventListener('input',()=>toneFineTune(2)); tone2Bright.addEventListener('input',()=>toneFineTune(2)); setTone(1,c1.value); setTone(2,c2.value); setWheels(); updateWheelFx();"
+          new="document.getElementById('tone1Strength').addEventListener('input',()=>toneFineTune(1)); document.getElementById('tone1Bright').addEventListener('input',()=>toneFineTune(1)); document.getElementById('tone2Strength').addEventListener('input',()=>toneFineTune(2)); document.getElementById('tone2Bright').addEventListener('input',()=>toneFineTune(2)); setTone(1,c1.value); setTone(2,c2.value); toneFineTune(1); toneFineTune(2); setWheels(); updateWheelFx();"
+          if old not in s: raise SystemExit("slider listener block not found")
+          s=s.replace(old,new,1)
+          # Remove the white snap: light colors stay in color mode; brightness slider handles white.
+          a=s.index("function setTone(n,c){"); b=s.index("function toneFineTune(",a)
+          block=s[a:b]
+          start=block
+          block=block.replace("const light=Math.max(0,Math.min(1,(lum-180)/75)); el.style.mixBlendMode=lum<90?'multiply':light>0.8?'screen':'color'; el.style.opacity=lum<35?'0.78':lum<90?'0.88':String(1-light*0.28); el.style.filter=lum<35?'brightness(145%) contrast(112%)':lum<90?'brightness(120%) contrast(108%)':light>0?'brightness('+(100+light*3)+'%) contrast('+(100+light*18)+'%)':'none';","el.style.mixBlendMode=lum<90?'multiply':'color'; el.style.opacity=lum<35?'0.78':lum<90?'0.88':'1'; el.style.filter=lum<35?'brightness(145%) contrast(112%)':lum<90?'brightness(120%) contrast(108%)':'none';")
+          if block==start: raise SystemExit("white snap block not found")
+          s=s[:a]+block+s[b:]
+          p.write_text(s,encoding="utf-8")
+      - run: |
+          git config user.name github-actions
+          git config user.email actions@github.com
+          git add index.html
+          git commit -m "Fix Tone slider events and remove white snap"
+          git push
