@@ -1,0 +1,38 @@
+name: Tone controls direct repair
+on:
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  repair:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - shell: python
+        run: |
+          from pathlib import Path
+          p=Path("index.html")
+          s=p.read_text(encoding="utf-8")
+          if 'id="tone1Strength"' not in s:
+              pos=s.find('<div class="section"><h2>Rims')
+              if pos<0: raise SystemExit("rims section missing")
+              panel='<div class="section"><h2>Tone fine tuning</h2><div class="note">Tone 1 strength <span id="tone1StrengthVal" style="float:right">100%</span></div><input id="tone1Strength" type="range" min="0" max="100" value="100" style="width:100%"><div class="note">Tone 1 brightness <span id="tone1BrightVal" style="float:right">100%</span></div><input id="tone1Bright" type="range" min="60" max="145" value="100" style="width:100%"><div class="note">Tone 2 strength <span id="tone2StrengthVal" style="float:right">100%</span></div><input id="tone2Strength" type="range" min="0" max="100" value="100" style="width:100%"><div class="note">Tone 2 brightness <span id="tone2BrightVal" style="float:right">100%</span></div><input id="tone2Bright" type="range" min="60" max="145" value="100" style="width:100%"></div>'
+              s=s[:pos]+panel+s[pos:]
+          if 'function toneFineTune(' not in s:
+              marker='function setWheels('
+              pos=s.find(marker)
+              if pos<0: raise SystemExit("wheel function missing")
+              js="function toneFineTune(n){const el=n===1?tone1El:tone2El;const st=document.getElementById('tone'+n+'Strength');const br=document.getElementById('tone'+n+'Bright');el.style.opacity=String(Number(st.value)/100);el.style.filter='brightness('+br.value+'%) contrast(108%)';document.getElementById('tone'+n+'StrengthVal').textContent=st.value+'%';document.getElementById('tone'+n+'BrightVal').textContent=br.value+'%';}\n"
+              s=s[:pos]+js+s[pos:]
+          if "tone1Strength.addEventListener" not in s:
+              marker='setTone(1,c1.value); setTone(2,c2.value);'
+              add="tone1Strength.addEventListener('input',()=>toneFineTune(1)); tone1Bright.addEventListener('input',()=>toneFineTune(1)); tone2Strength.addEventListener('input',()=>toneFineTune(2)); tone2Bright.addEventListener('input',()=>toneFineTune(2)); "
+              if marker not in s: raise SystemExit("init marker missing")
+              s=s.replace(marker,add+marker,1)
+          p.write_text(s,encoding="utf-8")
+      - run: |
+          git config user.name github-actions
+          git config user.email actions@github.com
+          git add index.html
+          git commit -m "Add working Tone fine tuning controls"
+          git push
