@@ -1,0 +1,30 @@
+name: Smooth light transition
+on:
+  push:
+    paths:
+      - '.github/workflows/light-transition.yml'
+permissions:
+  contents: write
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Update light renderer
+        shell: python
+        run: |
+          from pathlib import Path
+          p = Path("index.html")
+          s = p.read_text(encoding="utf-8")
+          old = """el.style.mixBlendMode=lum<90?'multiply':lum>225?'screen':'color'; el.style.opacity=lum<35?'0.78':lum<90?'0.88':lum>225?'0.68':'1'; el.style.filter=lum<35?'brightness(145%) contrast(112%)':lum<90?'brightness(120%) contrast(108%)':lum>225?'contrast(122%)':'none';"""
+          new = """const light=Math.max(0,Math.min(1,(lum-180)/75)); el.style.mixBlendMode=lum<90?'multiply':light>0.8?'screen':'color'; el.style.opacity=lum<35?'0.78':lum<90?'0.88':String(1-light*0.28); el.style.filter=lum<35?'brightness(145%) contrast(112%)':lum<90?'brightness(120%) contrast(108%)':light>0?'brightness('+(100+light*3)+'%) contrast('+(100+light*18)+'%)':'none';"""
+          if old not in s:
+              raise SystemExit("renderer signature not found")
+          p.write_text(s.replace(old,new,1),encoding="utf-8")
+      - name: Commit
+        run: |
+          git config user.name github-actions
+          git config user.email actions@github.com
+          git add index.html
+          git commit -m "Smooth light color transition"
+          git push
