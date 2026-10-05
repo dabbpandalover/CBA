@@ -1,0 +1,41 @@
+name: CBA multi favorites
+on:
+  push:
+    paths: [ '.github/workflows/cba-multi-favorites.yml' ]
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - shell: python
+        run: |
+          from pathlib import Path
+          import re
+          p=Path("index.html"); s=p.read_text(encoding="utf-8")
+          # Remove old Black Cherry + Dark Plum favorite/preset button.
+          s=re.sub(r'<button[^>]*>\s*(?:★|♥|♡)?\s*Black Cherry\s*\+\s*Dark Plum\s*</button>','',s,flags=re.I)
+          # Replace current two-button favorite UI with three save slots.
+          old='<div id="cbaFavBox"><div id="cbaFavMsg"></div><button id="cbaSaveFav">♡ Save Favorite</button><button id="cbaLoadFav">♥ Load Favorite</button></div>'
+          new='''<div id="cbaFavBox"><div id="cbaFavMsg"></div><button class="cbaFavSlot" data-slot="1">♡ Favorite 1</button><button class="cbaFavSlot" data-slot="2">♡ Favorite 2</button><button class="cbaFavSlot" data-slot="3">♡ Favorite 3</button></div>'''
+          if old not in s: raise SystemExit("favorite box target not found")
+          s=s.replace(old,new)
+          start=s.find("(()=>{const KEY='cba.favorite.v1'")
+          end=s.find("</script>",start)
+          if start<0 or end<0: raise SystemExit("favorite script target not found")
+          js=r"""(()=>{const msg=document.getElementById('cbaFavMsg');
+          const flash=t=>{msg.textContent=t;clearTimeout(window.__cbaFavT);window.__cbaFavT=setTimeout(()=>msg.textContent='',1800)};
+          const state=()=>({tone1:document.getElementById('c1')?.value,tone2:document.getElementById('c2')?.value,wheel:document.getElementById('wheelColor')?.value,strength:document.getElementById('wheelStrength')?.value,brightness:document.getElementById('wheelBright')?.value,finish:document.querySelector('[data-finish].active')?.dataset?.finish||null});
+          const load=v=>{if(v.tone1&&typeof setTone==='function')setTone(1,v.tone1);if(v.tone2&&typeof setTone==='function')setTone(2,v.tone2);const ws=document.getElementById('wheelStrength'),wb=document.getElementById('wheelBright');if(ws&&v.strength!=null)ws.value=v.strength;if(wb&&v.brightness!=null)wb.value=v.brightness;if(v.wheel&&typeof setWheels==='function')setWheels(v.wheel,'Favorite');if(v.finish){const b=document.querySelector('[data-finish="'+v.finish+'"]');if(b)b.click()}if(typeof updateWheelFx==='function')updateWheelFx()};
+          const refresh=()=>document.querySelectorAll('.cbaFavSlot').forEach(b=>{const has=!!localStorage.getItem('cba.favorite.'+b.dataset.slot);b.textContent=(has?'♥ ':'♡ ')+'Favorite '+b.dataset.slot;b.title=has?'Click to load • Shift-click to overwrite':'Click to save'});
+          document.querySelectorAll('.cbaFavSlot').forEach(b=>b.onclick=e=>{const k='cba.favorite.'+b.dataset.slot,raw=localStorage.getItem(k);if(!raw||e.shiftKey){localStorage.setItem(k,JSON.stringify(state()));flash('Favorite '+b.dataset.slot+' saved');refresh();return}try{load(JSON.parse(raw));flash('Favorite '+b.dataset.slot+' loaded')}catch(x){flash('Could not load favorite')}});
+          refresh();})();"""
+          s=s[:start]+js+s[end:]
+          p.write_text(s,encoding="utf-8")
+      - run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html
+          git commit -m "Replace old favorite with three save slots [cba-multi-favorites]"
+          git push
