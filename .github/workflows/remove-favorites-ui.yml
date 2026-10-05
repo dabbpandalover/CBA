@@ -1,0 +1,33 @@
+name: Remove favorites UI
+on:
+  push:
+    paths: [ '.github/workflows/remove-favorites-ui.yml' ]
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - shell: python
+        run: |
+          from pathlib import Path
+          import re
+          p=Path("index.html"); s=p.read_text(encoding="utf-8")
+          s=re.sub(r'<style[^>]*id=["\']cbaFavoritesStyle["\'][^>]*>.*?</style>','',s,flags=re.S|re.I)
+          s=re.sub(r'<div[^>]*id=["\']cbaFavorites["\'][^>]*>.*?<div[^>]*id=["\']cbaFavMsg["\'][^>]*></div>\s*</div>','',s,flags=re.S|re.I)
+          s=re.sub(r'<script[^>]*id=["\']cbaFavoritesScript["\'][^>]*>.*?</script>','',s,flags=re.S|re.I)
+          s=re.sub(r'<button\b[^>]*class=["\'][^"\']*\bfav\b[^"\']*["\'][^>]*>.*?</button>','',s,flags=re.S|re.I)
+          s=re.sub(r'function favorite\(\)\{.*?\}','',s,flags=re.S)
+          s=s.replace("document.querySelector('.fav').addEventListener('click',favorite);","")
+          # Verification: no favorite/save/load UI or old favorite hook remains.
+          bad=['id="cbaFavorites"','data-save-slot=','data-load-slot=','data-cba-save=','data-cba-load=',"querySelector('.fav')",'class="fav"']
+          left=[x for x in bad if x in s]
+          if left: raise SystemExit("favorite remnants: "+str(left))
+          p.write_text(s,encoding="utf-8")
+      - run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html
+          git commit -m "Remove favorites buttons and save load UI"
+          git push
