@@ -1,0 +1,49 @@
+name: CBA repair favorite slots
+on:
+  push:
+    paths: [ '.github/workflows/cba-repair-favorites.yml' ]
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - shell: python
+        run: |
+          from pathlib import Path
+          import re
+          p=Path("index.html"); s=p.read_text(encoding="utf-8")
+          # Remove prior injected favorite UI/script/styles completely.
+          s=re.sub(r'<style>\s*#cbaFavBox.*?</style>','',s,flags=re.S)
+          s=re.sub(r'<div id="cbaFavBox">.*?</div>','',s,flags=re.S)
+          s=re.sub(r'<script>\s*\(\(\)=>\{const msg=document\.getElementById\([\'"]cbaFavMsg[\'"]\).*?</script>','',s,flags=re.S)
+          addon=r"""<style>
+          #cbaFavBox{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:10px 0}
+          #cbaFavBox button{border:1px solid rgba(255,255,255,.28);background:rgba(18,18,22,.9);color:#fff;padding:8px 12px;border-radius:10px;font:600 13px system-ui;cursor:pointer}
+          #cbaFavBox button:hover{background:rgba(42,42,50,.96)}
+          .cbaSlot{display:flex;gap:6px;align-items:center}.cbaSlot span{font:700 12px system-ui;color:#aaa}
+          #cbaFavMsg{width:100%;color:#fff;font:12px system-ui;min-height:15px}
+          </style>
+          <div id="cbaFavBox"><b>Favorites</b><div class="cbaSlot"><span>1</span><button type="button" data-cba-save="1">Save</button><button type="button" data-cba-load="1">Load</button></div><div class="cbaSlot"><span>2</span><button type="button" data-cba-save="2">Save</button><button type="button" data-cba-load="2">Load</button></div><div class="cbaSlot"><span>3</span><button type="button" data-cba-save="3">Save</button><button type="button" data-cba-load="3">Load</button></div><div id="cbaFavMsg"></div></div>
+          <script>
+          window.addEventListener('DOMContentLoaded',function(){
+            const msg=document.getElementById('cbaFavMsg');
+            function flash(t){msg.textContent=t;clearTimeout(window.__cbaFavT);window.__cbaFavT=setTimeout(()=>msg.textContent='',1800)}
+            function val(id){const e=document.getElementById(id);return e?e.value:null}
+            function current(){return {tone1:val('c1'),tone2:val('c2'),wheel:val('wheelColor'),strength:val('wheelStrength'),brightness:val('wheelBright'),finish:(document.querySelector('[data-finish].active')||{}).dataset?.finish||null}}
+            function load(n){let v;try{v=JSON.parse(localStorage.getItem('cba.favorite.slot.'+n)||'null')}catch(e){}if(!v){flash('Slot '+n+' is empty');return}if(v.tone1&&typeof window.setTone==='function')window.setTone(1,v.tone1);if(v.tone2&&typeof window.setTone==='function')window.setTone(2,v.tone2);const a=document.getElementById('wheelStrength'),b=document.getElementById('wheelBright');if(a&&v.strength!=null)a.value=v.strength;if(b&&v.brightness!=null)b.value=v.brightness;if(v.wheel&&typeof window.setWheels==='function')window.setWheels(v.wheel,'Favorite '+n);if(v.finish){const f=document.querySelector('[data-finish="'+v.finish+'"]');if(f)f.click()}if(typeof window.updateWheelFx==='function')window.updateWheelFx();flash('Loaded favorite '+n)}
+            document.querySelectorAll('[data-cba-save]').forEach(btn=>btn.addEventListener('click',function(){const n=this.dataset.cbaSave;try{localStorage.setItem('cba.favorite.slot.'+n,JSON.stringify(current()));flash('Saved favorite '+n)}catch(e){flash('Could not save')}}));
+            document.querySelectorAll('[data-cba-load]').forEach(btn=>btn.addEventListener('click',function(){load(this.dataset.cbaLoad)}));
+          });
+          </script>"""
+          # Put UI before the app's first closing main/control panel if possible; otherwise before body end.
+          anchor='</body>'
+          s=s.replace(anchor,addon+'\n'+anchor)
+          p.write_text(s,encoding='utf-8')
+      - run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html
+          git commit -m "Repair favorite slot save and load handlers [cba-repair-favorites]"
+          git push
