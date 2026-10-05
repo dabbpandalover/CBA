@@ -1,0 +1,23 @@
+name: CBA inspect favorites
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - shell: python
+        run: |
+          from pathlib import Path
+          s=Path("index.html").read_text(encoding="utf-8")
+          terms=["cbaFavBox","data-cba-save","Black Cherry + Dark Plum","function setTone","function setWheels","function updateWheelFx"]
+          for term in terms:
+              print("\n===== "+term+" =====")
+              start=0
+              while True:
+                  i=s.find(term,start)
+                  if i<0: break
+                  print(s[max(0,i-500):min(len(s),i+1800)])
+                  start=i+len(term)
