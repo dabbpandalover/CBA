@@ -1,0 +1,29 @@
+name: CBA cleanup old favorites
+on:
+  push:
+    paths: [ '.github/workflows/cba-cleanup-old-favorites.yml' ]
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - shell: python
+        run: |
+          from pathlib import Path
+          import re
+          p=Path("index.html"); s=p.read_text(encoding="utf-8")
+          # Remove legacy Black Cherry + Dark Plum preset/favorite controls wherever they remain.
+          s=re.sub(r'<button[^>]*[^>]*>\s*Black Cherry\s*\+\s*Dark Plum\s*</button>','',s,flags=re.I)
+          s=re.sub(r'<option[^>]*>\s*Black Cherry\s*\+\s*Dark Plum\s*</option>','',s,flags=re.I)
+          # Remove only legacy standalone Save/Load buttons; preserve the new numbered slot buttons.
+          s=re.sub(r'<button(?![^>]*data-(?:save|load)=)[^>]*>\s*[♡♥]?\s*Save Favorite\s*</button>','',s,flags=re.I)
+          s=re.sub(r'<button(?![^>]*data-(?:save|load)=)[^>]*>\s*[♡♥]?\s*Load Favorite\s*</button>','',s,flags=re.I)
+          p.write_text(s,encoding="utf-8")
+      - run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html
+          git commit -m "Remove legacy bottom favorite controls and old favorite preset [cba-cleanup]"
+          git push
